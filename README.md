@@ -1,5 +1,7 @@
-<img src="logo.png" alt="Flurm Logo" width="300">
-A framework for flexible fine-grained resource management and job scheduling in HPC systems.
+<img src="logo.png" alt="Flurm Logo" width="500">
+
+# A framework for flexible fine-grained resource management and job scheduling in HPC systems.
+
 **Contributors:** Konstantinos Katsikopoulos
 
 ## Overview
@@ -7,6 +9,13 @@ A framework for flexible fine-grained resource management and job scheduling in 
 Flurm is a user-level framework that leverages Flux under Slurm (hence "Flurm") to enable advanced resource management and job scheduling in High-Performance Computing (HPC) environments, such as the ARIS cluster. It allows users to achieve fine-grained control over resources without administrative privileges, including compact and spread allocations, custom scheduling algorithms, and support for co-scheduling jobs.
 
 This repository provides scripts, templates, and examples to install and use Flux in a Slurm-managed cluster, model system resources as graphs, define custom jobspecs, and run experiments like those on NAS Parallel Benchmarks.
+
+## Repository Layout
+- [`aris/`](./aris)
+Scripts, templates, and helper tools used on the ARIS supercomputer.
+
+- [`docker/`](./docker)
+A Docker-based simulation of a Flurm cluster.
 
 ## Agenda
 
@@ -122,16 +131,12 @@ All features are designed for use as a regular cluster user, expanding beyond Sl
 
 Flurm relies on Flux installed via Spack, an HPC package manager.
 
-1. **Install Spack:**
-   - Clone Spack: `git clone https://github.com/spack/spack.git`
-   - Source the setup script: `. spack/share/spack/setup-env.sh`
+**Install Spack and Flux using the provided script:**
    - Customize user config and cache paths if needed.
-
-2. **Install Flux using the provided script:**
    - Run the custom bash script `spack_install_flux.sh` (included in this repo) to install Flux and dependencies (flux-core, flux-sched) in your home directory.
    - This handles versioning, dependencies, and builds Flux in userspace like a virtual environment.
 
-Required modules (example for ARIS cluster):
+Required modules for running Flux (example for ARIS cluster):
 - `module load gnu/8`
 - `module load gnu/13.2.0`
 - `module load python/3.9.18`
@@ -139,7 +144,9 @@ Required modules (example for ARIS cluster):
 - `module load intel/19`
 - `module load intelmpi/2018`
 
-After installation, load Flux: `spack load flux-sched`.
+After installation, you can load the Spack environment and the Flux module like so: 
+- `. spack/share/spack/setup-env.sh`
+- `spack load flux-sched`
 
 ## Usage
 
@@ -171,5 +178,3 @@ srun -N $SLURM_JOB_NUM_NODES -n $SLURM_JOB_NUM_NODES --mpi=pmi2 --export=ALL flu
 ```
 
 Submit with: sbatch flux_template.sh
-Flux Commands
-Flux commands map closely to Slurm. Here's a comparison:

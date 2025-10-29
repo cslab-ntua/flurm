@@ -1,0 +1,24 @@
+[tbon]
+interface_hint = "ib0"
+
+[resource]
+path = "/users/pa23/goumas/kkats/flurm/aris/conf.d/NODEFILE/R"
+scheduling = "/users/pa23/goumas/kkats/flurm/aris/conf.d/NODEFILE/aris.json"
+
+[ingest.validator]
+disable = true
+
+[queues.normal]
+requires = [ "normal" ]
+[queues.cosched]
+requires = [ "cosched" ]
+
+[policy.jobspec.defaults.system]
+queue = "normal"
+
+[sched-fluxion-resource]
+load-allowlist = "node,socket,core"
+match-format = "rv1"
+
+#[sched-fluxion-qmanager]
+#queue-policy-per-queue="cosched:easy normal:fcfs"

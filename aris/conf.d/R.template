@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "execution": {
+    "R_lite": [
+      {
+        "rank": "TEMPLATE_RANKLIST",
+        "children": {
+          "core": "0-19"
+        }
+      }
+    ],
+    "starttime": 0.0,
+    "expiration": 0.0,
+    "nodelist": [TEMPLATE_HOSTLIST]
+  }
+}
