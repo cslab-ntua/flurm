@@ -1,10 +1,8 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=FluxTest    # Job name
-#SBATCH --output=/users/pa23/goumas/kkats/jobs/FluxTest.%j.out # Stdout (%j expands to jobId)
-#SBATCH --error=/users/pa23/goumas/kkats/jobs/FluxTest.%j.err # Stderr (%j expands to jobId)
-#SBATCH --ntasks=3     # Number of tasks(processes)
-#SBATCH --nodes=3     # Number of nodes requested
+#SBATCH --job-name=FluxNAS    # Job name
+#SBATCH --output=/users/pa23/goumas/kkats/jobs/FluxNAS.%j.out # Stdout (%j expands to jobId)
+#SBATCH --error=/users/pa23/goumas/kkats/jobs/FluxNAS.%j.err # Stderr (%j expands to jobId)
 #SBATCH --exclusive
 
 
@@ -48,7 +46,6 @@ echo "Compute nodes: ${COMPUTE_NODES[@]}"
 COMPUTE_NODELIST=$(IFS=, ; echo "${COMPUTE_NODES[*]}")
 COMPUTE_RLIST=$(printf   '"%s",' "${COMPUTE_NODES[@]}"); COMPUTE_RLIST=${COMPUTE_RLIST%,}
 NNODES=$((SLURM_JOB_NUM_NODES-1))
-NTASKS=20
 
 RANKLIST="0-$NNODES"
 if [ "$NNODES" -eq 0 ]; then
@@ -74,5 +71,4 @@ cp $BASE_DIR/conf.d/plugins/cli/* $BASE_DIR/conf.d/$nodefile/plugins/cli/
 
 FLUX_DISABLE_JOB_CLEANUP=1 FLUX_CLI_PLUGINPATH=$BASE_DIR/conf.d/$nodefile/plugins/cli LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so \
     srun -N $SLURM_JOB_NUM_NODES -n $SLURM_JOB_NUM_NODES --mpi=pmi2 --export=ALL flux start -o --config-path=$BASE_DIR/conf.d/$nodefile/flux-config.toml \
-    flux run --requires="-hosts:${CONTROL_NODE}" -n $NTASKS \
-    hostname # replace with your script		
+    $BASE_DIR/eval/flux_NAS_$ALLOC.sh "$CONTROL_NODE" "${APP}.${CLASS}.x" $PROCS "${APP2}.${CLASS2}.x" $PROCS2

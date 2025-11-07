@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-import argparse, json
-from typing import List, Dict
+import argparse
+import json
+import os
+from typing import List, Dict, Optional
 
 def add_node(nodes: List[Dict], *, id_str: str, meta: Dict):
     nodes.append({
@@ -15,13 +17,20 @@ def add_edge(edges: List[Dict], *, src: str, dst: str, subsystem="containment"):
         "metadata": {"subsystem": subsystem},
     })
 
-def gen_graph(cluster_name: str, hosts: List[str], sockets: int, cores: int, start_uid: int = 0):
+def gen_graph(cluster_name: str,
+              hosts: List[str],
+              sockets: int,
+              cores: int,
+              start_uid: int = 0,
+              host_props: Optional[Dict[str, List[str]]] = None):
     """
-    Build a graph object like your example:
-      { "graph": { "nodes": [...], "edges": [...] } }
-    with the containment path: /cluster/<node>/socketX/coreY
+    Build graph with optional properties per host (node). host_props maps host → list of property names.
     """
-    nodes, edges = [], []
+    if host_props is None:
+        host_props = {}
+
+    nodes = []
+    edges = []
     uniq = start_uid
 
     # 1) Cluster node
@@ -39,31 +48,31 @@ def gen_graph(cluster_name: str, hosts: List[str], sockets: int, cores: int, sta
             "unit": "",
             "size": 1,
             "paths": { "containment": f"/{cluster_name}" },
-        },
+        }
     )
 
-    # 2) For each host: node -> socket[i] -> core[j]
+    # 2) Hosts → sockets → cores
     for r, host in enumerate(hosts):
         node_id = str(uniq); uniq += 1
-        add_node(nodes,
-            id_str=node_id,
-            meta={
-                "type": "node",
-                "basename": host,
-                "name": host,
-                # Your example put -1 here; we’ll mirror that:
-                "id": -1,
-                "uniq_id": int(node_id),
-                "rank": r,
-                "exclusive": False,
-                "unit": "",
-                "size": 1,
-                "paths": { "containment": f"/{cluster_name}/{host}" },
-            },
-        )
+        # Build metadata for node; include properties if present
+        node_meta = {
+            "type": "node",
+            "basename": host,
+            "name": host,
+            "id": -1,
+            "uniq_id": int(node_id),
+            "rank": r,
+            "exclusive": False,
+            "unit": "",
+            "size": 1,
+            "paths": { "containment": f"/{cluster_name}/{host}" },
+        }
+        if host in host_props:
+            node_meta["properties"] = host_props[host]
+
+        add_node(nodes, id_str=node_id, meta=node_meta)
         add_edge(edges, src=cluster_id, dst=node_id)
 
-        # sockets
         for s in range(sockets):
             sock_name = f"socket{s}"
             sock_id = str(uniq); uniq += 1
@@ -80,12 +89,13 @@ def gen_graph(cluster_name: str, hosts: List[str], sockets: int, cores: int, sta
                     "unit": "",
                     "size": 1,
                     "paths": { "containment": f"/{cluster_name}/{host}/{sock_name}" },
+                    "properties": host_props[host] if host in host_props else {}
                 },
             )
             add_edge(edges, src=node_id, dst=sock_id)
 
-            # cores under socket
-            for c in range(s*cores, (s+1)*cores):
+            # core IDs from s*cores to (s+1)*cores - 1
+            for c in range(s * cores, (s + 1) * cores):
                 core_name = f"core{c}"
                 core_id = str(uniq); uniq += 1
                 add_node(nodes,
@@ -103,9 +113,9 @@ def gen_graph(cluster_name: str, hosts: List[str], sockets: int, cores: int, sta
                         "paths": {
                             "containment": f"/{cluster_name}/{host}/{sock_name}/{core_name}"
                         },
+                        "properties": host_props[host] if host in host_props else {}
                     },
                 )
-                # IMPORTANT: make each core a child of the SOCKET (not a daisy chain)
                 add_edge(edges, src=sock_id, dst=core_id)
 
     return { "graph": { "nodes": nodes, "edges": edges } }
@@ -113,34 +123,63 @@ def gen_graph(cluster_name: str, hosts: List[str], sockets: int, cores: int, sta
 def parse_hosts(args) -> List[str]:
     if args.nodes:
         return [h.strip() for h in args.nodes.split(",") if h.strip()]
-    # auto-generate names like node0..node{N-1}
     return [f"{args.prefix}{i}" for i in range(args.nnodes)]
 
+def parse_props(prop_args: List[str]) -> Dict[str, Dict[str, str]]:
+    """
+    Parse a list like ["node0:hi,hey", "node2:foo"] into
+    { "node0": {"hi": "", "hey": ""}, "node2": {"foo": ""} }
+    """
+    mapping: Dict[str, Dict[str, str]] = {}
+    for p in prop_args:
+        if ":" not in p:
+            raise ValueError(f"Property argument {p!r} is not in HOST:prop1,prop2 form")
+        host, props = p.split(":", 1)
+        props = props.strip()
+        if not props:
+            continue
+        prop_list = [pr.strip() for pr in props.split(",") if pr.strip()]
+        # Build the dict with empty-string values
+        prop_map: Dict[str, str] = {}
+        for pr in prop_list:
+            prop_map[pr] = ""
+        mapping[host] = prop_map
+    return mapping
+
+
 def main():
-    ap = argparse.ArgumentParser(description="Generate JGF for cluster → node → socket → cores")
+    ap = argparse.ArgumentParser(description="Generate JGF graph with optional host properties")
     ap.add_argument("--cluster-name", default="cluster0")
-    ap.add_argument("--nodes", help="Comma-separated hostnames, e.g. n0,n1 (overrides --nnodes/--prefix)")
-    ap.add_argument("--nnodes", type=int, default=1, help="Number of nodes if --nodes not given")
-    ap.add_argument("--prefix", default="node", help="Hostname prefix if auto-generating")
+    ap.add_argument("--nodes", help="Comma-separated hostnames, e.g. n0,n1")
+    ap.add_argument("--nnodes", type=int, default=1)
+    ap.add_argument("--prefix", default="node")
     ap.add_argument("--sockets", type=int, default=1)
     ap.add_argument("--cores", type=int, default=12)
     ap.add_argument("--start-uniq-id", type=int, default=0)
+    ap.add_argument("-p", "--prop", action="append",
+                    help="Host properties map in form HOST:prop1,prop2 (can repeat)")
     ap.add_argument("-o", "--out", default="-", help="Output file (default stdout)")
     args = ap.parse_args()
 
     hosts = parse_hosts(args)
+    host_props = parse_props(args.prop) if args.prop else {}
+
     graph = gen_graph(
         cluster_name=args.cluster_name,
         hosts=hosts,
         sockets=args.sockets,
         cores=args.cores,
         start_uid=args.start_uniq_id,
+        host_props=host_props,
     )
 
     data = json.dumps(graph, indent=2)
-    if args.out == "-" or args.out == "/dev/stdout":
+    if args.out in ("-", "/dev/stdout"):
         print(data)
     else:
+        parent = os.path.dirname(args.out)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         with open(args.out, "w") as f:
             f.write(data)
 

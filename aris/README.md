@@ -35,7 +35,21 @@ Slurm acts as the total resource allocator, while Flux runs as the inner resourc
    - It uses `jgf_gen.py` to generate a JSON Graph Format (JGF) resource description for Flux based on your Slurm allocation (`aris.json`) and replaces the placeholders in the `R.template` file to create a R file for your system.
    - Adapt the script for your allocation size, walltime, modules and cluster architecture.
    - Adapt the `flux-config.toml` file in `conf.d/` to your needs and pass it to the `flux start` command using the `--config` option.
-3. **Monitor and Clean Up**
+3. **Use Cases**
+    1. **Resource Allocation Type**
+        - The `alloc_type.py` CLI Plugin introduces a new option on the flux submit command family: `--alloc-type`.
+        - This option allows users to specify `compact` or  `spread`
+        allocation strategies when submitting jobs to Flux.
+        - `compact` tries to fill each node completely before moving to the next one.
+        - `spread` does half socket allocation.
+    2. **Co-scheduling queue**
+        - The `cosched.py` CLI Plugin allows you to define a co-scheduling queue in Flux.
+        - Each job submitted to this queue will run with spread allocation.
+4. **Example Scripts**
+   The `examples/` folder contains examples of the above use cases.
+5. **Evaluation**
+   The scripts used for evaluating the allocation strategies and co-scheduling capabilities of Flux on ARIS can be found in the `eval/` folder.
+4. **Monitor and Clean Up**
    - Use the `check_ghosts.sh` script to check for and clean up any leftover Flux or Slurm processes that may not have terminated properly after your jobs complete. Ghost processes should be impossible if everything works correctly, but this script is useful for debugging.
 
 ## Notes
