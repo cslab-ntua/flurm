@@ -31,8 +31,19 @@ Slurm acts as the total resource allocator, while Flux runs as the inner resourc
 1. **Install Flux and Spack**
    - The `spack_install_flux.sh` script will install Spack and use it to install Flux and its dependencies in your home directory.  
    - You only need to do this once.
-   - You can customize the spack user config and user cache paths by defining the `SPACK_USER_CONFIG_PATH` and `SPACK_USER_CACHE_PATH` environment variables before running the script. The default is `~/.spack` for both of them.
-   - In order for Flux to work properly on ARIS, you need to run `make` inside the `flux-helpers` directory after running the installation script.
+   - You can customize the spack user config and user cache paths by defining the `SPACK_USER_CONFIG_PATH` and `SPACK_USER_CACHE_PATH` environment variables before running the script. If left unset the default paths are `~/.spack`. In the install script the default is `$(pwd)/.spack` for both of them.
+   - In order for Flux to work properly on ARIS, you need to run `make` inside the `flux_helpers` directory after running the installation script.
+```bash
+git clone https://github.com/cslab-ntua/flurm.git
+cd flurm/aris/opt/
+./spack_install_flux.sh
+cd flux_helpers
+make
+```
+   - For flux to support moldability in scheduling additionally run the `install_flux_moldability.sh` script like so:
+   ```bash
+   ./install_flux_moldability.sh
+   ```
 2. **Submit Jobs**
    - Use the `flux_template.sh` script as a starting point for your Slurm job scripts.  
    - It will allocate resources, load the Flux module, and launch a Flux broker inside your Slurm allocation. One node is used as the Flux control node, while the rest are used as compute nodes.
