@@ -49,7 +49,7 @@ The Flux Broker consists of:
 - **Broker Module Management**
 - **Broker Core Services**
 - **Message Routing**
-- **eMQ** (event message queue)
+- **ØMQ** (ZeroMQ for messaging)
 
 ## Flux Instance Network
 
