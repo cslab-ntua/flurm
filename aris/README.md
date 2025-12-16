@@ -8,7 +8,7 @@ Slurm acts as the total resource allocator, while Flux runs as the inner resourc
 ## Contents
 
 - **`opt/`**
-  - `flux-helpers/` → Essential helpers making Flux work in ARIS.
+  - `flux_helpers/` → Essential helpers making Flux work in ARIS.
   - `spack_install_flux.sh` → Script to install Flux and dependencies via [Spack](https://spack.readthedocs.io/).
 
 - **`scripts/`**
