@@ -57,7 +57,11 @@ fi
 
 echo "Compute Rlist: $COMPUTE_RLIST"
 
-uuid=$(uuidgen)
+idgen () {
+    LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so uuidgen
+}
+
+uuid=$(idgen)
 timestamp=$(date +%s)
 nodefile="$uuid_$timestamp"
 
