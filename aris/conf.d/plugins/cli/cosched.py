@@ -3,7 +3,7 @@ from math import ceil
 from flux import Flux
 
 class CoSchedPlugin(CLIPlugin):
-    """Flux cli alloc-type plugin. Modifies the job spec to the appropriate resource allocation type."""
+    """Flux cli cosched plugin. Modifies the job spec to coschedule jobs in a coschedule queue if the user specifies it."""
     # def add_options(self, parser):
     #     print("Adding alloc-type plugin options")
     #     parser.add_argument("--alloc-type", type=str, help="Choose the allocation type")
@@ -16,8 +16,10 @@ class CoSchedPlugin(CLIPlugin):
         )
     def modify_jobspec(self, args, jobspec):
         try:
-            if Flux().conf_get('cosched.allowed') == True:
-                print(Flux().conf_get('cosched.allowed'))
+            alloc_type = args.alloc_type
+            if args.cosched:
+                if alloc_type:
+                    raise ValueError("Cannot specify -o alloc-type with --cosched")
                 if len(jobspec.tasks) != 1:
                     raise ValueError("Multiple slot labels in the same request are not allowed for co-scheduling")
                 task_count = jobspec.tasks[0]['count']
@@ -25,7 +27,6 @@ class CoSchedPlugin(CLIPlugin):
                 nslots = 1
                 label = ""
                 per_resource = {}
-                print(task_count)
                 for parent, resource, count in jobspec.resource_walk():
                     if parent and parent['type'] != 'slot':
                         raise ValueError("Can only co-schedule requests with only resources of the lowest hierarchy specified")
@@ -67,7 +68,7 @@ class CoSchedPlugin(CLIPlugin):
                                             })
 
                 jobspec.tasks[0]['count'] = {'total': ntasks}
-                print(jobspec.resources)
-                print(jobspec.tasks)
+                jobspec.attributes["system"]["queue"] = "cosched"
+
         except KeyError as e:
             print(f"Error in allocation type plugin: {e}")

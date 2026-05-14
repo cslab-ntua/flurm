@@ -17,7 +17,7 @@ requires = [ "cosched" ]
 queue = "normal"
 
 [sched-fluxion-resource]
-load-allowlist = "node,socket,numanode,core"
+load-allowlist = "node,socket,numanode,ccd,core"
 match-format = "rv1"
 
 #[sched-fluxion-qmanager]

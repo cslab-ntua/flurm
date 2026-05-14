@@ -1,8 +1,10 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=FluxNAS    # Job name
-#SBATCH --output=/users/pa23/goumas/kkats/jobs/FluxNAS.%j.out # Stdout (%j expands to jobId)
-#SBATCH --error=/users/pa23/goumas/kkats/jobs/FluxNAS.%j.err # Stderr (%j expands to jobId)
+#SBATCH --job-name=FluxTest    # Job name
+#SBATCH --output=/users/pa23/goumas/kkats/jobs/FluxTest.%j.out # Stdout (%j expands to jobId)
+#SBATCH --error=/users/pa23/goumas/kkats/jobs/FluxTest.%j.err # Stderr (%j expands to jobId)
+#SBATCH --ntasks=1     # Number of tasks(processes)
+#SBATCH --nodes=1     # Number of nodes requested
 #SBATCH --exclusive
 
 
@@ -25,7 +27,7 @@ module load git
 module load intel/18
 module load intelmpi/2018
 
-BASE_DIR=$HOME/kkats/flurm/aris
+BASE_DIR=$HOME/kkats/flurm/aris25
 
 export SPACK_PYTHON="$(dirname "$(dirname "$(which python)")")"
 export SPACK_USER_CACHE_PATH=$BASE_DIR/opt/.spack
@@ -47,9 +49,11 @@ COMPUTE_NODELIST=$(IFS=, ; echo "${COMPUTE_NODES[*]}")
 COMPUTE_RLIST=$(printf   '"%s",' "${COMPUTE_NODES[@]}"); COMPUTE_RLIST=${COMPUTE_RLIST%,}
 NNODES=$((SLURM_JOB_NUM_NODES-1))
 SOCKETS_PER_NODE=2
-NUMA_PER_SOCKET=1
-CORES_PER_SOCKET=10
-CORES_PER_NODE=$((CORES_PER_SOCKET * SOCKETS_PER_NODE))
+NUMA_PER_SOCKET=4
+CCD_PER_NUMA=2
+CORES_PER_CCD=8
+CORES_PER_NODE=$((CORES_PER_CCD * CCD_PER_NUMA * NUMA_PER_SOCKET * SOCKETS_PER_NODE))
+NTASKS=20
 
 RANKLIST="0-$NNODES"
 if [ "$NNODES" -eq 0 ]; then
@@ -58,11 +62,7 @@ fi
 
 echo "Compute Rlist: $COMPUTE_RLIST"
 
-idgen () {
-    LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so uuidgen
-}
-
-uuid=$(idgen)
+uuid=$(uuidgen)
 timestamp=$(date +%s)
 nodefile="$uuid_$timestamp"
 
@@ -71,7 +71,7 @@ scheduling=$BASE_DIR/conf.d/$nodefile/aris.json
 # unique config directory for this job
 mkdir -p "$BASE_DIR/conf.d/$nodefile/plugins/cli"
 
-python3 $BASE_DIR/scripts/jgf_gen.py --nodes "$CONTROL_NODE,$COMPUTE_NODELIST" --set "socket=$SOCKETS_PER_NODE" --set "numanode=$NUMA_PER_SOCKET" --set "core=$CORES_PER_SOCKET" -o "$BASE_DIR/conf.d/$nodefile/aris.json"
+python3 $BASE_DIR/scripts/jgf_gen.py --nodes "$CONTROL_NODE,$COMPUTE_NODELIST" --set "socket=$SOCKETS_PER_NODE" --set "numanode=$NUMA_PER_SOCKET" --set "ccd=$CCD_PER_NUMA" --set "core=$CORES_PER_CCD" -o "$BASE_DIR/conf.d/$nodefile/aris.json"
 
 flux R encode -H "$CONTROL_NODE,$COMPUTE_NODELIST" -c "0-$((CORES_PER_NODE - 1))" > "$BASE_DIR/conf.d/$nodefile/R"
 sed -e "s|PATH|\"${path}\"|g" \
@@ -79,6 +79,7 @@ sed -e "s|PATH|\"${path}\"|g" \
 
 cp $BASE_DIR/conf.d/plugins/cli/* $BASE_DIR/conf.d/$nodefile/plugins/cli/
 
-FLUX_DISABLE_JOB_CLEANUP=1 FLUX_CLI_PLUGINPATH=$BASE_DIR/conf.d/$nodefile/plugins/cli LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so \
+FLUX_CLI_PLUGINPATH=$BASE_DIR/conf.d/$nodefile/plugins/cli \
     srun -N $SLURM_JOB_NUM_NODES -n $SLURM_JOB_NUM_NODES --mpi=pmi2 --export=ALL flux start -o --config-path=$BASE_DIR/conf.d/$nodefile/flux-config.toml \
-    $BASE_DIR/eval/flux_NAS_$ALLOC.sh "$CONTROL_NODE" "${APP}.${CLASS}.x" $PROCS "${APP2}.${CLASS2}.x" $PROCS2
+    flux run --requires="-hosts:${CONTROL_NODE}" -n $NTASKS \
+    hostname # replace with your script		

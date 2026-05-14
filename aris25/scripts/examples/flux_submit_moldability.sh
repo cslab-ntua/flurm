@@ -28,7 +28,7 @@ module load git
 module load intel/18
 module load intelmpi/2018
 
-BASE_DIR=$HOME/kkats/flurm/aris
+BASE_DIR=$HOME/kkats/flurm/aris25
 
 export SPACK_PYTHON="$(dirname "$(dirname "$(which python)")")"
 export SPACK_USER_CACHE_PATH=$BASE_DIR/opt/.spack
@@ -46,17 +46,12 @@ COMPUTE_NODES=("${HOSTS[@]:1}")
 echo "Control node: $CONTROL_NODE"
 echo "Compute nodes: ${COMPUTE_NODES[@]}"
 
-
-idgen () {
-    LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so uuidgen
-}
-
-uuid=$(idgen)
+uuid=$(uuidgen)
 timestamp=$(date +%s)
 nodefile="$uuid_$timestamp"
 
 cp $BASE_DIR/conf.d/flux-config-moldability.toml > "$BASE_DIR/conf.d/$nodefile/flux-config.toml"
 
-FLUX_DISABLE_JOB_CLEANUP=1 LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so \
-    srun -N $SLURM_JOB_NUM_NODES -n $SLURM_JOB_NUM_NODES --mpi=pmi2 --export=ALL flux start -o --config-path=$BASE_DIR/conf.d/$nodefile/flux-config.toml \
-    flux_moldability_NAS.sh $CONTROL_NODE
+
+srun -N $SLURM_JOB_NUM_NODES -n $SLURM_JOB_NUM_NODES --mpi=pmi2 --export=ALL flux start -o --config-path=$BASE_DIR/conf.d/$nodefile/flux-config.toml \
+  flux_moldability_NAS.sh $CONTROL_NODE

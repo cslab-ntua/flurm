@@ -58,11 +58,13 @@ class AllocTypePlugin(CLIPlugin):
 
                 numa_per_socket = numa_nodes // sockets
                 cores_per_numa = cores_per_socket // numa_per_socket
+                ccd_per_numa = 2
+                cores_per_ccd = cores_per_numa // ccd_per_numa
                 
                 if args.alloc_type == "spread":
                     jobspec.resources.clear()
-                    jobspec.resources.append({'type': 'numanode', 'count': ceil (nslots / (cores_per_numa // 2)),
-                                                  'with': [{'type': 'slot', 'count' : min (cores_per_numa // 2, nslots),
+                    jobspec.resources.append({'type': 'ccd', 'count': ceil (nslots / (cores_per_ccd // 2)),
+                                                  'with': [{'type': 'slot', 'count' : min (cores_per_ccd // 2, nslots),
                                                             'with': [{'type': 'core', 'count': 1}], 'label': label }]
                                                 })
                     jobspec.tasks[0]['count'] = {'total': ntasks}

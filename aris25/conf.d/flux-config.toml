@@ -1,0 +1,13 @@
+[tbon]
+interface_hint = "ib0"
+
+[resource]
+path = PATH
+scheduling = SCHEDULING
+
+[ingest.validator]
+disable = true
+
+[sched-fluxion-resource]
+load-allowlist = "node,socket,numanode,core"
+match-format = "rv1"

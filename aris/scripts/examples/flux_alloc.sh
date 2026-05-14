@@ -35,7 +35,7 @@ export SPACK_USER_CONFIG_PATH=$BASE_DIR/opt/.spack
 
 . $BASE_DIR/opt/spack/share/spack/setup-env.sh
 
-spack load flux-sched
+spack load flux-sched@0.48
 
 ## RUN YOUR PROGRAM ##
 readarray -t HOSTS < <(scontrol show hostnames $SLURM_NODELIST)
@@ -48,6 +48,10 @@ echo "Compute nodes: ${COMPUTE_NODES[@]}"
 COMPUTE_NODELIST=$(IFS=, ; echo "${COMPUTE_NODES[*]}")
 COMPUTE_RLIST=$(printf   '"%s",' "${COMPUTE_NODES[@]}"); COMPUTE_RLIST=${COMPUTE_RLIST%,}
 NNODES=$((SLURM_JOB_NUM_NODES-1))
+SOCKETS_PER_NODE=2
+NUMA_PER_SOCKET=1
+CORES_PER_NUMA=10
+CORES_PER_NODE=$((CORES_PER_NUMA * NUMA_PER_SOCKET * SOCKETS_PER_NODE))
 NTASKS=20
 
 RANKLIST="0-$NNODES"
@@ -65,14 +69,16 @@ uuid=$(idgen)
 timestamp=$(date +%s)
 nodefile="$uuid_$timestamp"
 
+path=$BASE_DIR/conf.d/$nodefile/R
+scheduling=$BASE_DIR/conf.d/$nodefile/aris.json
 # unique config directory for this job
 mkdir -p "$BASE_DIR/conf.d/$nodefile/plugins/cli"
 
-python3 $BASE_DIR/scripts/jgf_gen.py --nodes "$CONTROL_NODE,$COMPUTE_NODELIST" --sockets 2 --cores 10 -o "$BASE_DIR/conf.d/$nodefile/aris.json"
+python3 $BASE_DIR/scripts/jgf_gen.py --nodes "$CONTROL_NODE,$COMPUTE_NODELIST" --set "socket=$SOCKETS_PER_NODE" --set "numanode=$NUMA_PER_SOCKET" --set "core=$CORES_PER_NUMA" -o "$BASE_DIR/conf.d/$nodefile/aris.json"
 
-sed -e "s|TEMPLATE_HOSTLIST|\"$CONTROL_NODE\",$COMPUTE_RLIST|g" \
-    -e "s|TEMPLATE_RANKLIST|${RANKLIST}|g" $BASE_DIR/conf.d/R.template > "$BASE_DIR/conf.d/$nodefile/R" 
-sed -e "s|NODEFILE|${nodefile}|g" $BASE_DIR/conf.d/flux-config.toml > "$BASE_DIR/conf.d/$nodefile/flux-config.toml"
+flux R encode -H "$CONTROL_NODE,$COMPUTE_NODELIST" -c "0-$((CORES_PER_NODE - 1))" > "$BASE_DIR/conf.d/$nodefile/R"
+sed -e "s|PATH|\"${path}\"|g" \
+    -e "s|SCHEDULING|\"${scheduling}\"|g" $BASE_DIR/conf.d/flux-config.toml > "$BASE_DIR/conf.d/$nodefile/flux-config.toml"
 
 cp $BASE_DIR/conf.d/plugins/cli/* $BASE_DIR/conf.d/$nodefile/plugins/cli/
 
