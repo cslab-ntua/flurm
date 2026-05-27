@@ -21,14 +21,11 @@ module purge        # clean up loaded modules
 
 # load necessary modules
 
-module load gnu/8
-module load gnu/13.2.0
-module load python/3.9.18
-module load git
-module load intel/18
-module load intelmpi/2018
+module load gnu/13
+module load python/3.13.2
 
 BASE_DIR=$HOME/kkats/flurm/aris25
+PATH=$PATH:BASE_DIR/opt/git-2.47.3
 
 export SPACK_PYTHON="$(dirname "$(dirname "$(which python)")")"
 export SPACK_USER_CACHE_PATH=$BASE_DIR/opt/.spack

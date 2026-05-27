@@ -29,13 +29,13 @@ sed -i '284i \
             current_environment["LD_LIBRARY_PATH"] = f"/apps/libraries/zlib/1.2.11/lib:/apps/compilers/gnu/13.2.0/lib:/apps/compilers/gnu/13.2.0/lib64:/apps/applications/python/3.9.18/lib:{existing}"' \
 spack/lib/spack/spack/util/executable.py
 # Finally install flux
-# CORE=$(find $SPACK_USER_CONFIG_PATH/package_repos -name flux_core)
-# SCHED=$(find $SPACK_USER_CONFIG_PATH/package_repos -name flux_sched)
-# sed -i '25i \
-#     version("0.78.0", sha256="9159ccb64826b23391abe7c125a9e2ccaa1eb6409eeb2fd2a6ee4be07bf39e56")' \
-# $CORE/package.py
-# sed -i '25i \
-#     version("0.47.0", sha256="80194e5c23e7ef5f4bf6cb1c9f63f949f979e9f58c7976e5453c31f244d3fd6a")' \
-# $SCHED/package.py
+CORE=$(find $SPACK_USER_CONFIG_PATH/package_repos -name flux_core)
+SCHED=$(find $SPACK_USER_CONFIG_PATH/package_repos -name flux_sched)
+sed -i '25i \
+    version("0.78.0", sha256="9159ccb64826b23391abe7c125a9e2ccaa1eb6409eeb2fd2a6ee4be07bf39e56")' \
+$CORE/package.py
+sed -i '25i \
+    version("0.47.0", sha256="80194e5c23e7ef5f4bf6cb1c9f63f949f979e9f58c7976e5453c31f244d3fd6a")' \
+$SCHED/package.py
 
-spack install --yes-to-all flux-sched@0.48
+spack install --yes-to-all flux-sched@0.47

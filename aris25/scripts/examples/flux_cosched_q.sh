@@ -20,14 +20,11 @@ module purge        # clean up loaded modules
 
 # load necessary modules
 
-module load gnu/8
-module load gnu/13.2.0
-module load python/3.9.18
-module load git
-module load intel/18
-module load intelmpi/2018
+module load gnu/13
+module load python/3.13.2
 
 BASE_DIR=$HOME/kkats/flurm/aris25
+PATH=$PATH:BASE_DIR/opt/git-2.47.3
 
 export SPACK_PYTHON="$(dirname "$(dirname "$(which python)")")"
 export SPACK_USER_CACHE_PATH=$BASE_DIR/opt/.spack
@@ -55,9 +52,10 @@ COMPUTE_NODELIST=$(IFS=, ; echo "${COMPUTE_NODES[*]}")
 COMPUTE_RLIST=$(printf   '"%s",' "${COMPUTE_NODES[@]}"); COMPUTE_RLIST=${COMPUTE_RLIST%,}
 NNODES=$((SLURM_JOB_NUM_NODES-1))
 SOCKETS_PER_NODE=2
-NUMA_PER_SOCKET=1
-CORES_PER_NUMA=10
-CORES_PER_NODE=$((CORES_PER_NUMA * NUMA_PER_SOCKET * SOCKETS_PER_NODE))
+NUMA_PER_SOCKET=4
+CCD_PER_NUMA=2
+CORES_PER_CCD=8
+CORES_PER_NODE=$((CORES_PER_CCD * CCD_PER_NUMA * NUMA_PER_SOCKET * SOCKETS_PER_NODE))
 NTASKS=20
 
 half=$(( SLURM_JOB_NUM_NODES / 2 ))
