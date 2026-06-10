@@ -148,6 +148,7 @@ def add_resources_recursive(
     nodes: List[Dict[str, Any]],
     edges: List[Dict[str, Any]],
     id_counter: List[int],
+    resource_id_counters: Dict[str, int],
     parent_id: str,
     parent_path: str,
     levels: List[List[Tuple[str, int]]],
@@ -161,13 +162,16 @@ def add_resources_recursive(
     current_level = levels[level_index]
 
     for rtype, count in current_level:
-        for idx in range(count):
-            name = f"{rtype}{idx}"
+        for local_idx in range(count):
+            rid = resource_id_counters.get(rtype, 0)
+            resource_id_counters[rtype] = rid + 1
+
+            name = f"{rtype}{rid}"
             node_id = next_id(id_counter)
             path = f"{parent_path}/{name}"
 
             local_context = dict(context)
-            local_context[rtype] = idx
+            local_context[rtype] = rid
 
             add_node(
                 nodes,
@@ -175,7 +179,7 @@ def add_resources_recursive(
                 make_metadata(
                     rtype=rtype,
                     name=name,
-                    rid=idx,
+                    rid=rid,
                     uniq_id=int(node_id),
                     path=path,
                     properties=host_props,
@@ -187,6 +191,7 @@ def add_resources_recursive(
                 nodes=nodes,
                 edges=edges,
                 id_counter=id_counter,
+                resource_id_counters=resource_id_counters,
                 parent_id=node_id,
                 parent_path=path,
                 levels=levels,
@@ -243,10 +248,13 @@ def gen_graph(
         )
         add_edge(edges, cluster_id, node_id)
 
+        resource_id_counters: Dict[str, int] = {}
+
         add_resources_recursive(
             nodes=nodes,
             edges=edges,
             id_counter=id_counter,
+            resource_id_counters=resource_id_counters,
             parent_id=node_id,
             parent_path=node_path,
             levels=levels,
