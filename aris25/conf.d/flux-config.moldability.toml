@@ -1,0 +1,8 @@
+[tbon]
+interface_hint = "ib0"
+
+[sched-fluxion-qmanager]
+queue-policy= "fcfs_moldability"
+
+[sched-fluxion-qmanager.policy-params]
+moldability-policy="tanh"

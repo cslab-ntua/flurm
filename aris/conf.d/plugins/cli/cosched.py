@@ -1,8 +1,9 @@
-from flux.cli.plugin import CLIPlugin
+import subprocess
 from math import ceil
+from flux import Flux
 
 class CoSchedPlugin(CLIPlugin):
-    """Flux cli alloc-type plugin. Modifies the job spec to the appropriate resource allocation type."""
+    """Flux cli cosched plugin. Modifies the job spec to coschedule jobs in a coschedule queue if the user specifies it."""
     # def add_options(self, parser):
     #     print("Adding alloc-type plugin options")
     #     parser.add_argument("--alloc-type", type=str, help="Choose the allocation type")
@@ -19,30 +20,54 @@ class CoSchedPlugin(CLIPlugin):
             if args.cosched:
                 if alloc_type:
                     raise ValueError("Cannot specify -o alloc-type with --cosched")
-                resources = jobspec.resource_counts()
-                if not (resources.get('node') is None and resources.get('socket') is None):
-                    raise ValueError("Cannot specify --alloc-type with resources other than cores/slots")
-                nslots = {x[1]['label'] : x[2] for x in jobspec.resource_walk() if x[1]['type'] == 'slot'}
-                ntasks = {task['slot']: (task['count']['total'] if task['count'].get('total') else task['count']['per_slot']*nslots[task['slot']]) for task in jobspec.tasks}
-                if sum(ntasks.values()) > sum(nslots.values()):
-                    raise ValueError("Cannot spread more tasks than available slots")
-                # if for task number is not uniform across labels, we cannot spread
-                if len(set(ntasks.values())) != 1:
-                    raise ValueError("Cannot spread tasks with non-uniform task counts across labels")
-                if len(ntasks) > 2:
-                    raise ValueError("Cannot spread tasks across more than 2 labels")
-                
-                pps = 10
-                nsockets = { label : ceil(ntasks[label]/(pps//2)) for label in ntasks.keys()} 
+                if len(jobspec.tasks) != 1:
+                    raise ValueError("Multiple slot labels in the same request are not allowed for co-scheduling")
+                task_count = jobspec.tasks[0]['count']
+                ntasks = 0
+                nslots = 1
+                label = ""
+                per_resource = {}
+                for parent, resource, count in jobspec.resource_walk():
+                    if parent and parent['type'] != 'slot':
+                        raise ValueError("Can only co-schedule requests with only resources of the lowest hierarchy specified")
+                    if resource['type'] == 'slot':
+                        label = resource['label']
+                        for ttype, tcount in task_count.items():
+                            if ttype == 'per_slot':
+                                ntasks = tcount * count
+                                nslots = count
+                            elif ttype == 'per_resource':
+                                for rtype, rcount in tcount.items():
+                                    per_resource[rtype] = rcount
+                                nslots = count
+                            else:
+                                ntasks = tcount
+                                nslots = count
+                    if resource['type'] in per_resource:
+                        ntasks += per_resource[resource['type']] * count
+
+
+                output = subprocess.check_output("lscpu", shell=True).decode()
+                info = {}
+                for line in output.splitlines():
+                    if ":" in line:
+                        key, value = line.split(":", 1)
+                        info[key.strip()] = value.strip()
+
+                sockets = int(info.get("Socket(s)", 1))
+                numa_nodes = int(info.get("NUMA node(s)", 1))
+                cores_per_socket = int(info.get("Core(s) per socket", 1))
+
+                numa_per_socket = numa_nodes // sockets
+                cores_per_numa = cores_per_socket // numa_per_socket
+
                 jobspec.resources.clear()
-                for label in ntasks.keys():
-                    jobspec.resources.append({'type': 'socket', 'count': nsockets[label], 
-                                              'with': [{'type': 'slot', 'count' : min(pps//2, ntasks[label]),  
-                                                        'with': [{'type': 'core', 'count': 1}], 'label': label }] 
+                jobspec.resources.append({'type': 'numanode', 'count': ceil (nslots / (cores_per_numa // 2)),
+                                              'with': [{'type': 'slot', 'count' : min (cores_per_numa // 2, nslots),
+                                                        'with': [{'type': 'core', 'count': 1}], 'label': label }]
                                             })
-                jobspec.setattr_shell_option("cpu-affinity", "per-task")
-                for task in jobspec.tasks:
-                    task['count'] = {'total': ntasks[task['slot']]} 
+
+                jobspec.tasks[0]['count'] = {'total': ntasks}
                 jobspec.attributes["system"]["queue"] = "cosched"
 
         except KeyError as e:

@@ -1,0 +1,24 @@
+[tbon]
+interface_hint = "ib0"
+
+[resource]
+path = PATH
+scheduling = SCHEDULING
+
+[ingest.validator]
+disable = true
+
+[queues.normal]
+requires = [ "normal" ]
+[queues.cosched]
+requires = [ "cosched" ]
+
+[policy.jobspec.defaults.system]
+queue = "normal"
+
+[sched-fluxion-resource]
+load-allowlist = "node,socket,numanode,ccd,core"
+match-format = "rv1"
+
+#[sched-fluxion-qmanager]
+#queue-policy-per-queue="cosched:easy normal:fcfs"

@@ -2,12 +2,12 @@
 interface_hint = "ib0"
 
 [resource]
-path = "/users/pa23/goumas/kkats/flurm/aris/conf.d/NODEFILE/R"
-scheduling = "/users/pa23/goumas/kkats/flurm/aris/conf.d/NODEFILE/aris.json"
+path = PATH
+scheduling = SCHEDULING
 
 [ingest.validator]
 disable = true
 
 [sched-fluxion-resource]
-load-allowlist = "node,socket,core"
+load-allowlist = "node,socket,numanode,core"
 match-format = "rv1"

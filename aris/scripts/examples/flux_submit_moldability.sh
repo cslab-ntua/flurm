@@ -46,32 +46,17 @@ COMPUTE_NODES=("${HOSTS[@]:1}")
 echo "Control node: $CONTROL_NODE"
 echo "Compute nodes: ${COMPUTE_NODES[@]}"
 
-COMPUTE_NODELIST=$(IFS=, ; echo "${COMPUTE_NODES[*]}")
-COMPUTE_RLIST=$(printf   '"%s",' "${COMPUTE_NODES[@]}"); COMPUTE_RLIST=${COMPUTE_RLIST%,}
-NNODES=$((SLURM_JOB_NUM_NODES-1))
 
-RANKLIST="0-$NNODES"
-if [ "$NNODES" -eq 0 ]; then
-  RANKLIST="0"
-fi
+idgen () {
+    LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so uuidgen
+}
 
-echo "Compute Rlist: $COMPUTE_RLIST"
-
-uuid=$(uuidgen)
+uuid=$(idgen)
 timestamp=$(date +%s)
 nodefile="$uuid_$timestamp"
 
-# unique config directory for this job
-mkdir -p "$BASE_DIR/conf.d/$nodefile/plugins/cli"
+cp $BASE_DIR/conf.d/flux-config-moldability.toml > "$BASE_DIR/conf.d/$nodefile/flux-config.toml"
 
-python3 $BASE_DIR/scripts/jgf_gen.py --nodes "$CONTROL_NODE,$COMPUTE_NODELIST" --sockets 2 --cores 10 -o "$BASE_DIR/conf.d/$nodefile/aris.json"
-
-sed -e "s|TEMPLATE_HOSTLIST|\"$CONTROL_NODE\",$COMPUTE_RLIST|g" \
-    -e "s|TEMPLATE_RANKLIST|${RANKLIST}|g" $BASE_DIR/conf.d/R.template > "$BASE_DIR/conf.d/$nodefile/R" 
-sed -e "s|NODEFILE|${nodefile}|g" $BASE_DIR/conf.d/flux-config.moldability.toml > "$BASE_DIR/conf.d/$nodefile/flux-config.moldability.toml"
-
-cp $BASE_DIR/conf.d/plugins/cli/* $BASE_DIR/conf.d/$nodefile/plugins/cli/
-
-FLUX_DISABLE_JOB_CLEANUP=1 FLUX_CLI_PLUGINPATH=$BASE_DIR/conf.d/$nodefile/plugins/cli LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so \
-    srun -N $SLURM_JOB_NUM_NODES -n $SLURM_JOB_NUM_NODES --mpi=pmi2 --export=ALL flux start -o --config-path=$BASE_DIR/conf.d/$nodefile/flux-config-moldability.toml \
+FLUX_DISABLE_JOB_CLEANUP=1 LD_PRELOAD=$BASE_DIR/opt/flux_helpers/redirect_random.so \
+    srun -N $SLURM_JOB_NUM_NODES -n $SLURM_JOB_NUM_NODES --mpi=pmi2 --export=ALL flux start -o --config-path=$BASE_DIR/conf.d/$nodefile/flux-config.toml \
     flux_moldability_NAS.sh $CONTROL_NODE

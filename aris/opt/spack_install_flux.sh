@@ -38,5 +38,4 @@ sed -i '25i \
     version("0.47.0", sha256="80194e5c23e7ef5f4bf6cb1c9f63f949f979e9f58c7976e5453c31f244d3fd6a")' \
 $SCHED/package.py
 
-spack install --yes-to-all flux-core@0.78
 spack install --yes-to-all flux-sched@0.47
